@@ -1,3 +1,0 @@
-User: HaydenC, IoT Device: Light1, device_id: LT3e45re
-User: HaydenCamp, IoT Device: Light, device_id: LT9g76hu
-User: HaydenC, IoT Device: Light, device_id: LT7g39rt
