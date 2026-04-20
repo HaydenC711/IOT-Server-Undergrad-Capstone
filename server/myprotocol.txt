@@ -1,0 +1,51 @@
+
+
+
+Main App Post-connection (Server behavior)
+------------------------
+- Ask main application for instruction (Turn on off device/generate traffic report)
+   -  for turn on/off --> server sends packet to device with instruction
+   -  server reads traffic from device file?
+      - send traffic to server automatically?
+
+
+
+Device Authentication
+----------------
+-device sets opcode to 100 snd sends devId, type, hashed passPhrase
+- the passphrase is read from (struct or txt) and hashed
+	- if hashed passphrases are the same, server continues
+	- otherwise it disconnects
+- server checks account struct and finds the account associated with deviceId
+		if not found server disconnects device
+- AccountNo is stored in the clientInfo struct
+
+Handling Device Packets
+-------------------------
+- 
+
+Lightbulb
+----------------
+- connects and authenticates with the server
+- recieves packets sent from the server
+- if disconnect opcode recieved --> 
+- if DEV_LIGHT opcode recieved --> check param
+      -if param == 99 --> check if light is on or off
+          -send DEV_RESP opcode back to server with 1 or 0 as param
+      -if param == 1
+      	  -turn light off and send DEV_OK opcode back to server
+      -if param == 0
+      	  -turn light off and send DEV_OK opcode back to server
+
+
+
+Device Post connection 
+----------------------
+- recieves instruction and turns on or off
+
+-taffic report is generated (not sure how this will work exactly) 
+writes all instructions to txt file (or sent to server automatically?) 
+ - all handshaking attempts are written, ip is included
+ - DDOS notifications are written 
+ - 
+- 
