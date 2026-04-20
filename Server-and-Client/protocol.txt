@@ -1,0 +1,83 @@
+IOT protocols
+=============
+
+For identification and security, assume:
+
+ * the use of text string pass phrases of up to 35 characters + the \0 character.
+ 
+ * a device can be configured and registered through a phone app using bluetooth.
+ 
+ * each device has a unit idenfification string or code (i.e. something like a
+   MAC address.)
+ 
+ * when a device is registered with an account:
+ 
+   - the device is assigned its own secret pass phrase by the owner and a
+     salt value is randomly generated.
+     
+   - the pass phrase and the salt value are stored on the device
+     
+   - the device's id, pass phrase, and the salt value are stored as part of 
+     account info on the server in plain text (i.e. we assume the data is
+     stored securly in a database system).  
+   
+     
+When a device connects to the server or sends a message, as part of the packet,
+it always:
+
+ * sends its id string in plain text to the server
+
+ * encrypts it's secret pass phrase along with a 4-byte sequence number
+   preprended to the phrase, using a randomly generated salt value.
+ 
+ * sends the resulting hash value to the server
+ 
+
+When the server receives a packet from the client, it always:
+
+ * confirms the id string is a valid device for the given account (based on
+   the socket connection).
+   
+ * encrypts the device's pass phrase that is stored on the server along with
+   the expected sequence number prepended to phrase.
+   
+ * verifies that the two hash strings match.
+ 
+ 
+When the server sends a packet to the device, as part of the packet, it will
+do a similar process: 
+
+ * encrypts the device's secret pass phrase using the stored salt value and
+   it's own sequence number prepended to the phrase.
+ 
+ * sends the hash value to the device.
+ 
+the device must then verify the hash value by generating a hash value using
+the stored salt value comparing it to the hash value that was sent by the
+server. 
+
+For an extra layer of security, there could be a secret pass phrase set for
+each account that is given to the device when it's registered and that is used
+by the server when it sends packets to the device, intead of using the device
+pass phrase. For now, don't worry about this extra layer of security.
+
+
+Device Packet
+-------------
+
+At a minimum, the device packet should have the following format:
+
+struct DevicePacket {
+  int opcode;      // the request or response code.
+  char hash[HASH_SIZE];   // the hash value that results from encrpyting the
+                          // device's pass phrase and a prepended sequence number.
+                          
+  char devId[DEVID_SIZE]; // the unique device id used when connecting.
+      :
+      :
+};
+
+
+
+   
+
