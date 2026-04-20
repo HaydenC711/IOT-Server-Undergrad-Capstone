@@ -1,0 +1,78 @@
+# admin.py
+# Blake Doggett
+# 9/19/23
+
+
+# An administrator is used to create user accounts for my system. 
+#The program is designed to create a single user account
+
+import getpass
+import crypt
+
+# Function to check if a password meets the password policy
+def is_strong_password(password):
+    if len(password) < 8:
+        return False
+    if not any(char.isupper() for char in password):
+        return False
+    if not any(char.islower() for char in password):
+        return False
+    if not any(char.isdigit() for char in password):
+        return False
+    if not any(not char.isalnum() for char in password):
+        return False
+    return True
+
+# Function to check if a username is already in use
+def is_username_in_use(username):
+    with open("user_accounts.txt", "r") as file:
+        for line in file:
+            partof = line.strip().split(":")
+            if len(partof) >= 2 and partof[1] == username:
+                return True
+    return False
+
+# Function to create a new user account
+def create_user_account(username, full_name, password, userID):
+    # Generate a random salt using crypt.mksalt
+    salt = crypt.mksalt(crypt.METHOD_SHA512)
+
+    # hash the password with the salt
+    hashed_password = crypt.crypt(password, salt)
+
+    # Store the user account information and hashed password in a file
+    with open("user_accounts.txt", "a") as file:
+        file.write(f"{userID}:{username}:{full_name}:{salt}:{hashed_password}\n")
+        
+
+    print("User account created successfully!!")
+# Read the last used userID from the existing user_accounts.txt file
+try:
+    with open("user_accounts.txt", "r") as file:
+        line_count = 0
+        for line in file:
+        	line_count += 1
+    userID = line_count + 1
+except FileNotFoundError:
+    userID = 1  
+
+
+
+# Prompt for user information
+z = 1
+while z == 1:
+    username = input("Username: ")
+    if is_username_in_use(username):
+        print("Username already in use. Please choose a different username.")
+    else:
+        z =  0
+full_name = input("Full Name: ")
+password = getpass.getpass("Password: ")
+
+
+# Check if the password is strong
+if not is_strong_password(password):
+    print("Error!! authentication failed due to an invalid password.\n Password must be at least 8 characters long.\n Password must contain upper- and lower-case letters.\n Password must contain a number.\n Password must contain a non-alphanumeric character.")
+else:
+    
+    create_user_account(username, full_name, password, userID)

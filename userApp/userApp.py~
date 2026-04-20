@@ -1,0 +1,284 @@
+# userApp.py
+# Blake Doggett
+# 9/19/23
+
+
+# To authenticate access to your system or to change their password.
+
+import sys
+import getpass
+import crypt
+import datetime
+import socket
+
+# Function to check if a password meets the password policy
+def is_strong_password(password):
+    if len(password) < 8:
+        return False
+    if not any(char.isupper() for char in password):
+        return False
+    if not any(char.islower() for char in password):
+        return False
+    if not any(char.isdigit() for char in password):
+        return False
+    if not any(not char.isalnum() for char in password):
+        return False
+    return True
+
+# Function to verify a password against a stored hashed password
+def verify_password(input_password, stored_password):
+    return crypt.crypt(input_password, stored_password) == stored_password
+    
+# Function to check if a username is already in use
+def is_username_in_use(username):
+    with open("user_accounts.txt", "r") as file:
+        for line in file:
+            partof = line.strip().split(":")
+            if len(partof) >= 2 and partof[1] == username:
+                return True
+    return False
+
+# Function to create a new user account
+def create_user_account(username, full_name, password, userID):
+    # Generate a random salt using crypt.mksalt
+    salt = crypt.mksalt(crypt.METHOD_SHA512)
+
+    # hash the password with the salt
+    hashed_password = crypt.crypt(password, salt)
+
+    # Store the user account information and hashed password in a file
+    with open("user_accounts.txt", "a") as file:
+        file.write(f"{userID}:{username}:{full_name}:{salt}:{hashed_password}\n")
+        
+
+    print("User account created successfully!!")
+    # Read the last used userID from the existing user_accounts.txt file
+    try:
+    	with open("user_accounts.txt", "r") as file:
+    		line_count = 0
+    		for line in file:
+    			line_count += 1
+    			userID = line_count + 1
+    except FileNotFoundError:
+    			userID = 1  
+
+# Function to change a user's password
+def change_password(username, current_password, new_password):
+    # Load user account information and hashed password from the file
+    with open("user_accounts.txt", "r") as file:
+        lines = file.readlines()
+
+    updated_lines = []
+    b = 1
+
+    for line in lines:
+        a = line.strip().split(":")
+        if len(a) >= 5: 
+            if a[1] == username:
+                userID = a[0]
+                salt = a[3]
+                hashed_password = a[4]
+                if verify_password(current_password, hashed_password):
+                    while b == 1:
+                        new_password = getpass.getpass("New Password: ")
+                        if is_strong_password(new_password):
+                            new_password2 = getpass.getpass("Re-enter new password: ")
+                            if new_password == new_password2:
+                                # Generate a new random salt using crypt.mksalt
+                                new_salt = crypt.mksalt(crypt.METHOD_SHA512)
+        
+                                # Cryptographically hash the new password with the new salt
+                                new_hashed_password = crypt.crypt(new_password, new_salt)
+        
+                                updated_line = f"{userID}:{username}:{a[2]}:{new_salt}:{new_hashed_password}\n"
+                                updated_lines.append(updated_line)
+                                print("Password changed successfully.")
+                                b = 0
+                                
+                                # Update the password in the file
+                                with open("user_accounts.txt", "w") as update_file:
+                                    update_file.writelines(updated_lines)
+                                     
+                            else:
+                                    print("Error!! Authentication failed due to passwords not matching.")
+                        else:
+                            print("Error!! Authentication failed due to an invalid password.\nPassword must be at least 8 characters long.\nPassword must contain upper- and lower-case letters.\nPassword must contain a number.\nPassword must contain a non-alphanumeric character.")
+                else:
+                    print("Error!! Authentication failed due to an invalid current password.")
+            else:
+                updated_lines.append(line)
+
+# Function to add IoT devices
+def add_iot_devices(username, admin_ip_address):
+    b = 1
+    print(f"Logged in as user {username}")
+    user_ip_address = socket.gethostbyname(socket.gethostname())
+    
+    while b == 1:
+        device_name = input("\nEnter the name of the IoT device or 'q' to quit): ")
+        if device_name.lower() != 'q':
+            # Check if the user's IP address matches the admin's IP address
+            if user_ip_address == admin_ip_address:
+                # Append the device information to a file
+                with open("iot_devices.txt", "a") as iot_file:
+                    iot_file.write(f"User: {username}, IoT Device: {device_name}\n")
+                print(f"Device {device_name} was added.")
+            else:
+                print("Error: You can only add devices within the same IP address set by the admin.")
+        else: 
+            print("Done")
+            b = 0
+    print("")
+# Function to remove IoT devices from a user's account
+def remove_iot_devices(username):
+    h = 1
+    print(f"Logged in as user {username}")
+    devices = []
+    with open("iot_devices.txt", "r") as iot_file:
+        for line in iot_file:
+            if f"User: {username}" in line:
+                devices.append(line)
+
+    if not devices:
+        print("No devices found for this user.")
+        return 0
+
+    print("Devices associated with this user:")
+    for i, device in enumerate(devices):
+        print(f"{i + 1}: {device.strip()}")
+
+    while h == 1:
+        try:
+            choice = int(input("Enter the number of the device to remove, or 'q' to quit: "))
+            if 1 <= choice <= len(devices):
+                removed_device = devices.pop(choice - 1)
+                print(f"Removed device: {removed_device.strip()}")
+            elif choice == "q":
+                h = 0
+            else:
+                print("Invalid choice. Please select a valid device or 'q' to quit.")
+        except ValueError:
+            if input("Enter 'q' to quit or anything else to continue: ").lower() == 'q':
+                h = 0
+
+    with open("iot_devices.txt", "w") as iot_file:
+        iot_file.writelines(devices)
+# Function to list IoT devices for a user
+def list_iot_devices(username):
+    with open("iot_devices.txt", "r") as iot_file:
+        devices = []
+        for line in iot_file:
+            if f"User: {username}" in line:
+                devices.append(line)
+        if devices:
+            print(f"\nIoT devices associated with user {username}:")
+            for device in devices:
+                print(device.strip())
+        else:
+            print(f"No IoT devices found for user {username}.")
+            
+# Function to log login attempts
+def log_login_attempt(username, success, ip_address = None):
+    if success:
+        try:
+            # Get the current date and time
+            current_datetime = datetime.datetime.now()
+            # Format the date and time
+            formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Getting IP address of the user
+            host_name = socket.gethostname()
+            ip_address = socket.gethostbyname(host_name)
+            
+            # Log the date and time of the last successful login
+            with open("login_logs.txt", "a") as log_file:
+                log_file.write(f"User {username} logged in successfully at {formatted_datetime} from IP address {ip_address}\n")
+        except socket.gaierror:
+            print("Error: Unable to retrieve the IP address")
+    else:
+        try:
+            # Get the current date and time
+            current_datetime = datetime.datetime.now()
+            # Format the date and time
+            formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+            # Getting IP address of the user
+            host_name = socket.gethostname()
+            ip_address = socket.gethostbyname(host_name)
+            
+            # Log the date and time of the last successful login
+            with open("login_logs.txt", "a") as log_file:
+                log_file.write(f"User {username} failed login at {formatted_datetime} from IP address {ip_address}\n")
+        except socket.gaierror:
+            print("Error: Unable to retrieve the IP address")            
+
+
+
+# Counter for incorrect attempts
+incorrect_attempts = 0
+
+if len(sys.argv) < 3:
+    print("Error: Missing command-line arguments.")
+    sys.exit(1)
+
+
+operation = sys.argv[1]
+username = sys.argv[2]
+
+if operation == 'c':
+    print(f"Changing password for user {username}")
+    # Changing password
+    current_password = getpass.getpass("Current Password: ")
+    change_password(username, current_password, "")
+
+elif operation == 'a':
+    iot = "a"
+    # Authenticating user
+    print(f"Authenticating for user {username}")
+        
+    while incorrect_attempts != 3:
+        input_password = getpass.getpass("Enter password: ")
+
+        # Load user account information and hashed password from the file
+        with open("user_accounts.txt", "r") as file:
+            user_found = False
+            for line in file:
+                a = line.strip().split(":")
+                if len(a) >= 5:
+                    if a[1] == username:
+                        hashed_password = a[4]
+                        if verify_password(input_password, hashed_password):
+                            print("Success!! Authentication valid.\n")
+                            while iot.lower() != 'q':
+                                iot = input("(1) Add IoT device \n(2) Remove IoT device \n(3) List IoT devices \n(q) Quit \nSelect: ")
+                                if iot == '1':
+                                    add_iot_devices(username)
+                                    
+                                elif iot == '2':
+                                    remove_iot_devices(username)
+                                    
+                                elif iot == '3':
+                                    list_iot_devices(username)  
+                                else:
+                                    iot = 'q'   
+                            # Log the successful login attempt
+                            log_login_attempt(username, True)
+                            incorrect_attempts = 3
+                        else:
+                            print("Error!! Authentication failed due to an invalid password.")
+                            log_login_attempt(username, False)
+                            incorrect_attempts += 1
+                            if incorrect_attempts == 3:
+                                print("Too many incorrect attempts. Shutting down...")
+elif operation == 'n':
+    # Check if the password is strong
+    if not is_strong_password(password):
+    	print("Error!! authentication failed due to an invalid password.\n Password must be at least 8 characters long.\n Password must contain upper- and lower-case letters.\n Password must contain a number.\n Password must contain a non-alphanumeric character.")
+    else:
+    	# Ask the admin to confirm the password
+    	confirm_password = getpass.getpass("Confirm Password: ")
+    	if password == confirm_password:
+    		create_user_account(username, full_name, password, userID)
+    	else:
+    		print("Password confirmation failed. Please try again.")
+else:
+    print("Error!! Invalid operation. Use 'c' to change password, 'a' to authenticate, or 'n' to create a new account.")
